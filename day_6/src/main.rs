@@ -102,7 +102,7 @@ fn ways_to_win(duration:f64, record: usize) -> usize {
           idx = ((idx as f64 + low_bound as f64) / 2_f64).floor() as usize;
       } else {
           low_bound = idx;
-          idx = ((idx as f64 + range as f64)    / 2_f64).ceil()  as usize;
+          idx = ((idx as f64 + up_bound as f64)    / 2_f64).ceil()  as usize;
       }
     }
 
