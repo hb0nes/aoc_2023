@@ -27,7 +27,7 @@ fn parse_line(input: &str) -> IResult<&str, Vec<i32>> {
 /// last element.
 fn finish_pattern(input: Vec<i32>, forward: bool) -> i32 {
   let mut pyramid: Vec<Vec<i32>> = vec![input];
-  'outer: loop {
+  loop {
     pyramid.push(vec![]);
     let idx_next = pyramid.len() - 1;
     let idx_cur = idx_next - 1;
@@ -38,7 +38,7 @@ fn finish_pattern(input: Vec<i32>, forward: bool) -> i32 {
     // If we have a sequence of only 0's, we can break because we have all the info required
     // to finish the pattern.
     if pyramid[idx_next].iter().all(|&x| x == 0) {
-      break 'outer;
+      break;
     }
   }
   if forward {
