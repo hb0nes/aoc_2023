@@ -12,10 +12,7 @@ use nom::{
 
 fn potentially_negative_number(input: &str) -> IResult<&str, i32> {
   let (input, (sign, number)) = tuple((opt(tag("-")), digit1))(input)?;
-  Ok((
-    input,
-    format!("{}{}", sign.unwrap_or(""), number).parse().unwrap(),
-  ))
+  Ok((input, format!("{}{}", sign.unwrap_or(""), number).parse().unwrap()))
 }
 
 fn parse_line(input: &str) -> IResult<&str, Vec<i32>> {
@@ -27,48 +24,27 @@ fn parse_line(input: &str) -> IResult<&str, Vec<i32>> {
 /// last element.
 fn finish_pattern(input: Vec<i32>, forward: bool) -> i32 {
   let mut pyramid: Vec<Vec<i32>> = vec![input];
-  loop {
-    pyramid.push(vec![]);
-    let idx_next = pyramid.len() - 1;
-    let idx_cur = idx_next - 1;
-    for i in 0..(pyramid[idx_cur].len() - 1) {
-      let diff = pyramid[idx_cur][i + 1] - pyramid[idx_cur][i];
-      pyramid[idx_next].push(diff);
-    }
-    // If we have a sequence of only 0's, we can break because we have all the info required
-    // to finish the pattern.
-    if pyramid[idx_next].iter().all(|&x| x == 0) {
-      break;
-    }
+  // Build the pyramid until we reach a sequence of only 0's
+  while !pyramid.last().unwrap().iter().all(|&x| x == 0) {
+    pyramid.push(pyramid.last().unwrap().windows(2).map(|x| x[1] - x[0]).collect());
   }
+  // Finish the pattern forwards, or backwards
   if forward {
-    pyramid.iter().fold(0, |acc, x| acc + x[x.len() - 1])
+    pyramid.iter().fold(0, |acc, seq| acc + *seq.last().unwrap())
   } else {
-    pyramid.iter().rev().fold(0, |acc, x| x[0] - acc)
+    pyramid.iter().rev().fold(0, |acc, seq| seq.first().unwrap() - acc)
   }
 }
 
-fn solution_one(input: Vec<Vec<i32>>) -> i32 {
-  input.iter().fold(0, |acc, x| {
-    let a = finish_pattern(x.clone(), true);
-    println!("acc: {:?}, fin: {:?}, x: {:?}", acc, a, x);
-    acc + a
-  })
-}
-
-fn solution_two(input: Vec<Vec<i32>>) -> i32 {
-  input.iter().fold(0, |acc, x| {
-    let a = finish_pattern(x.clone(), false);
-    println!("acc: {:?}, fin: {:?}, x: {:?}", acc, a, x);
-    acc + a
-  })
+fn solve(input: &[Vec<i32>], part_one: bool) -> i32 {
+  input.iter().fold(0, |acc, x| acc + finish_pattern(x.clone(), part_one))
 }
 
 fn main() {
   let input = read_to_string("input.txt").unwrap();
   let (_, input_parsed) = parse_input_lines(&input, parse_line).unwrap();
-  let a = solution_one(input_parsed.clone());
-  println!("Part 1: {}", a);
-  let b = solution_two(input_parsed.clone());
-  println!("Part 2: {}", b);
+  let solution_one = solve(&input_parsed, true);
+  println!("Part 1: {}", solution_one);
+  let solution_two = solve(&input_parsed, false);
+  println!("Part 2: {}", solution_two);
 }
