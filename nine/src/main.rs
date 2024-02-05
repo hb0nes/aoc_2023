@@ -22,32 +22,53 @@ fn parse_line(input: &str) -> IResult<&str, Vec<i32>> {
   separated_list1(space1, potentially_negative_number)(input)
 }
 
-fn finish_pattern(input: &Vec<i32>) -> i32 {
-  let mut sequence = 0;
-  let mut pyramid: Vec<Vec<i32>> = vec![];
+/// finish_pattern builds a pyramid of diffs as per AoC instructions
+/// Once we reach a sequence of 0's, we can finish the pattern by summing every
+/// last element.
+fn finish_pattern(input: Vec<i32>, forward: bool) -> i32 {
+  let mut pyramid: Vec<Vec<i32>> = vec![input];
   'outer: loop {
-    for i in 0..(input.len() - 1) {
-      let d = (input[i] - input[i + 1]).abs();
-      pyramid[sequence].push(d);
+    pyramid.push(vec![]);
+    let idx_next = pyramid.len() - 1;
+    let idx_cur = idx_next - 1;
+    for i in 0..(pyramid[idx_cur].len() - 1) {
+      let diff = pyramid[idx_cur][i + 1] - pyramid[idx_cur][i];
+      pyramid[idx_next].push(diff);
     }
-    if pyramid[sequence].iter().all(|&x| x == 0) {
+    // If we have a sequence of only 0's, we can break because we have all the info required
+    // to finish the pattern.
+    if pyramid[idx_next].iter().all(|&x| x == 0) {
       break 'outer;
     }
-    sequence += 1;
   }
-  // Pyramid is built, work our way back
-  println!("{:?}", pyramid);
-  0
+  if forward {
+    pyramid.iter().fold(0, |acc, x| acc + x[x.len() - 1])
+  } else {
+    pyramid.iter().rev().fold(0, |acc, x| x[0] - acc)
+  }
 }
 
 fn solution_one(input: Vec<Vec<i32>>) -> i32 {
-  for line in input {}
-  todo!()
+  input.iter().fold(0, |acc, x| {
+    let a = finish_pattern(x.clone(), true);
+    println!("acc: {:?}, fin: {:?}, x: {:?}", acc, a, x);
+    acc + a
+  })
+}
+
+fn solution_two(input: Vec<Vec<i32>>) -> i32 {
+  input.iter().fold(0, |acc, x| {
+    let a = finish_pattern(x.clone(), false);
+    println!("acc: {:?}, fin: {:?}, x: {:?}", acc, a, x);
+    acc + a
+  })
 }
 
 fn main() {
   let input = read_to_string("input.txt").unwrap();
-  let (_, input) = parse_input_lines(&input, parse_line).unwrap();
-  let a = finish_pattern(&input[0]);
+  let (_, input_parsed) = parse_input_lines(&input, parse_line).unwrap();
+  let a = solution_one(input_parsed.clone());
   println!("Part 1: {}", a);
+  let b = solution_two(input_parsed.clone());
+  println!("Part 2: {}", b);
 }
