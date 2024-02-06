@@ -34,6 +34,14 @@ impl Tile {
   }
 }
 
+enum Direction {
+  North,
+  East,
+  South,
+  West,
+  Same,
+}
+
 #[derive(Debug)]
 struct CoordinateTile {
   coordinate: Coordinate,
@@ -41,14 +49,30 @@ struct CoordinateTile {
 }
 
 impl CoordinateTile {
-  fn new(grid: &Grid, coordinate: &Coordinate) -> CoordinateTile {
+  fn new(grid: &Grid, coordinate: &Coordinate) -> Self {
     let tile = Tile::from(&grid.get_char_at_coord(coordinate));
     let coordinate = coordinate.clone();
-    CoordinateTile { tile, coordinate }
+    Self { tile, coordinate }
   }
 
+  /// Checks if this CoordinateTile is the same as another based on coordinates
   fn same(&self, other: &CoordinateTile) -> bool {
     self.coordinate.x == other.coordinate.x && self.coordinate.y == other.coordinate.y
+  }
+
+  /// Checks if the other CoordinateTile is N/E/S/W of this tile
+  fn direction(&self, other: &CoordinateTile) -> Direction {
+    if other.coordinate.x - self.coordinate.x == 1 {
+      Direction::East
+    } else if other.coordinate.x - self.coordinate.x == -1 {
+      Direction::West
+    } else if other.coordinate.y - self.coordinate.y == -1 {
+      Direction::North
+    } else if other.coordinate.y - self.coordinate.y == 1 {
+      Direction::South
+    } else {
+      Direction::Same
+    }
   }
 
   /// Generate the CoordinateTiles around this one
@@ -59,179 +83,75 @@ impl CoordinateTile {
         x: self.coordinate.x + dx,
         y: self.coordinate.y + dy,
       })
-      .filter(|c| grid.valid_coordinate(&c))
+      .filter(|c| grid.valid_coordinate(c))
       .map(|c| CoordinateTile::new(grid, &c))
       .collect()
   }
 
-  /// Looks at which tile we are, and where we came from.
-  /// Based on that, return the next tile
-  fn next_tile(&self, grid: &Grid, prev: &CoordinateTile) -> CoordinateTile {
-    // Prev is East
-    if prev.coordinate.x - self.coordinate.x == 1 {
-      match self.tile {
-        Tile::EastWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x - 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        Tile::SouthEast => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y + 1,
-            },
-          )
-        }
-        Tile::NorthEast => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y - 1,
-            },
-          )
-        }
-        _ => panic!("invalid coordinate passed to next_coordinate"),
-      }
-    }
-    // Prev is West
-    if prev.coordinate.x - self.coordinate.x == -1 {
-      match self.tile {
-        Tile::EastWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x + 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        Tile::NorthWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y - 1,
-            },
-          )
-        }
-        Tile::SouthWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y + 1,
-            },
-          )
-        }
-        _ => panic!("invalid coordinate passed to next_coordinate"),
-      }
-    }
-    // Prev is North
-    if prev.coordinate.y - self.coordinate.y == -1 {
-      match self.tile {
-        Tile::NorthSouth => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y + 1,
-            },
-          )
-        }
-        Tile::NorthWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x - 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        Tile::NorthEast => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x + 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        _ => panic!("invalid coordinate passed to next_coordinate"),
-      }
-    }
-    // Prev is South
-    if prev.coordinate.y - self.coordinate.y == 1 {
-      match self.tile {
-        Tile::NorthSouth => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x,
-              y: self.coordinate.y - 1,
-            },
-          )
-        }
-        Tile::SouthEast => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x + 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        Tile::SouthWest => {
-          return CoordinateTile::new(
-            grid,
-            &Coordinate {
-              x: self.coordinate.x - 1,
-              y: self.coordinate.y,
-            },
-          )
-        }
-        _ => panic!("invalid coordinate passed to next_coordinate"),
-      }
-    }
-    panic!("wtf");
+  /// Return a new tile N/E/S/W of current tile by looking at the grid
+  fn new_tile_by_direction(&self, grid: &Grid, direction: Direction) -> CoordinateTile {
+    let (dx, dy) = match direction {
+      Direction::North => (0, -1),
+      Direction::East => (1, 0),
+      Direction::South => (0, 1),
+      Direction::West => (-1, 0),
+      Direction::Same => panic!("Same for new tile..?"),
+    };
+    let coordinate = &Coordinate {
+      x: self.coordinate.x + dx,
+      y: self.coordinate.y + dy,
+    };
+    CoordinateTile::new(grid, coordinate)
   }
 
+  /// Look at current tile and where the previous tile is.
+  /// Based on that, return the next tile.
+  /// For example:
+  ///   - previous is West
+  ///   - current tile is J
+  ///   - Next tile is North
+  fn next_tile(&self, grid: &Grid, prev: &CoordinateTile) -> CoordinateTile {
+    match self.direction(prev) {
+      Direction::North => match self.tile {
+        Tile::NorthSouth => self.new_tile_by_direction(grid, Direction::South),
+        Tile::NorthWest => self.new_tile_by_direction(grid, Direction::West),
+        Tile::NorthEast => self.new_tile_by_direction(grid, Direction::East),
+        _ => panic!("invalid coordinate passed to next_coordinate"),
+      },
+      Direction::East => match self.tile {
+        Tile::EastWest => self.new_tile_by_direction(grid, Direction::West),
+        Tile::SouthEast => self.new_tile_by_direction(grid, Direction::South),
+        Tile::NorthEast => self.new_tile_by_direction(grid, Direction::North),
+        _ => panic!("invalid coordinate passed to next_coordinate"),
+      },
+      Direction::South => match self.tile {
+        Tile::NorthSouth => self.new_tile_by_direction(grid, Direction::North),
+        Tile::SouthEast => self.new_tile_by_direction(grid, Direction::East),
+        Tile::SouthWest => self.new_tile_by_direction(grid, Direction::West),
+        _ => panic!("invalid coordinate passed to next_coordinate"),
+      },
+      Direction::West => match self.tile {
+        Tile::EastWest => self.new_tile_by_direction(grid, Direction::East),
+        Tile::NorthWest => self.new_tile_by_direction(grid, Direction::North),
+        Tile::SouthWest => self.new_tile_by_direction(grid, Direction::South),
+        _ => panic!("invalid coordinate passed to next_coordinate"),
+      },
+      Direction::Same => panic!("double you tee eff"),
+    }
+  }
+
+  /// Checks if other CoordinateTile is connected to this one
+  /// For example, if Other is | and self is -, Other is not connected.
   fn connected(&self, other: &CoordinateTile) -> bool {
-    // Other is East
-    if other.coordinate.x - self.coordinate.x == 1 {
-      match other.tile {
-        Tile::EastWest | Tile::SouthWest | Tile::NorthWest => return true,
-        _ => return false,
+    match self.direction(other) {
+      Direction::North => matches!(other.tile, Tile::SouthWest | Tile::SouthEast | Tile::NorthSouth),
+      Direction::East => matches!(other.tile, Tile::EastWest | Tile::SouthWest | Tile::NorthWest),
+      Direction::South => matches!(other.tile, Tile::NorthSouth | Tile::NorthEast | Tile::NorthWest),
+      Direction::West => matches!(other.tile, Tile::EastWest | Tile::SouthEast | Tile::NorthEast),
+      Direction::Same => {
+        panic!("double you tee eff")
       }
     }
-    // Other is West
-    if other.coordinate.x - self.coordinate.x == -1 {
-      match other.tile {
-        Tile::EastWest | Tile::SouthEast | Tile::NorthEast => return true,
-        _ => return false,
-      }
-    }
-    // Other is North
-    if other.coordinate.y - self.coordinate.y == -1 {
-      match other.tile {
-        Tile::SouthWest | Tile::SouthEast | Tile::NorthSouth => return true,
-        _ => return false,
-      }
-    }
-    // Other is South
-    if other.coordinate.y - self.coordinate.y == 1 {
-      match other.tile {
-        Tile::NorthSouth | Tile::NorthEast | Tile::NorthWest => return true,
-        _ => return false,
-      }
-    }
-    false
   }
 
   /// Looks at surrounding tiles to see which one is connected
@@ -289,13 +209,12 @@ impl Grid {
 }
 
 /// Walks through the pipes and returns the amount of pipes encountered
-fn walk(grid: &Grid, pipes: usize, starting_point: &CoordinateTile, prev: &CoordinateTile, cur: &CoordinateTile) -> usize {
-  let next = cur.next_tile(&grid, prev);
-  // println!("pipes: {}, prev: {:?}, cur: {:?}, next: {:?}", pipes, prev, cur, next);
+fn walk(grid: &Grid, pipe_count: usize, starting_point: &CoordinateTile, prev: &CoordinateTile, cur: &CoordinateTile) -> usize {
+  let next = cur.next_tile(grid, prev);
   if next.same(starting_point) {
-    return pipes;
+    return pipe_count;
   }
-  walk(grid, pipes + 1, starting_point, cur, &next)
+  walk(grid, pipe_count + 1, starting_point, cur, &next)
 }
 
 fn main() {
@@ -303,7 +222,6 @@ fn main() {
   let grid = Grid::new(&input);
   let start = grid.find_tile_by_char('S');
   let starting_pipe = start.find_starting_tile(&grid);
-  let pipes = walk(&grid, 2, &start, &start, &starting_pipe);
-  println!("{:?}", pipes);
+  let pipe_count = walk(&grid, 2, &start, &start, &starting_pipe);
   println!("solution 1: {:?}", pipes / 2);
 }
