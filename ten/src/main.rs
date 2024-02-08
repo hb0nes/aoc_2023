@@ -404,12 +404,11 @@ fn solution_two(grid: &Grid) {
   let pipeline_direction = pipeline_direction(&pipeline_enhanced);
   // println!("Loop direction: {:?}", loop_direction);
   let enclosed_fuggers = find_enclosed_fuggers(&pipeline_enhanced, pipeline_direction);
-
   println!("solution 2: {}", enclosed_fuggers.len());
 }
 
 fn main() {
-  let input = read_to_string("input.txt.1").unwrap();
+  let input = read_to_string("input.txt.real").unwrap();
   let grid = Grid::new(&input);
   let start = grid.find_tile_by_char('S');
   let starting_pipe = start.find_starting_tile(&grid);
