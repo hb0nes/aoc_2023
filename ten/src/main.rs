@@ -1,4 +1,8 @@
-use std::{collections::HashSet, fs::read_to_string, ops::Rem};
+use std::{
+  collections::{HashMap, HashSet},
+  fs::read_to_string,
+  ops::Rem,
+};
 
 #[derive(Debug, Clone)]
 enum Turn {
@@ -23,6 +27,7 @@ enum Tile {
   SouthEast,
   Start,
   Ground,
+  Other,
 }
 
 impl Tile {
@@ -36,7 +41,29 @@ impl Tile {
       'F' => Self::SouthEast,
       'S' => Self::Start,
       '.' => Self::Ground,
-      _ => panic!("Invalid character for Tile"),
+      _ => Self::Other,
+    }
+  }
+
+  fn is_ubend(&self, other: &Tile) -> bool {
+    match self {
+      Tile::NorthEast => match other {
+        Tile::NorthWest => true,
+        _ => false,
+      },
+      Tile::NorthWest => match other {
+        Tile::NorthEast => true,
+        _ => false,
+      },
+      Tile::SouthWest => match other {
+        Tile::SouthEast => true,
+        _ => false,
+      },
+      Tile::SouthEast => match other {
+        Tile::SouthWest => true,
+        _ => false,
+      },
+      _ => false,
     }
   }
 }
@@ -229,11 +256,9 @@ impl CoordinateTile {
   /// Looks at surrounding tiles to see which one is connected
   /// and returns the first one, to start walking through the pipes
   fn find_starting_tile(&self, grid: &Grid) -> CoordinateTile {
-    if let Tile::Start = self.tile {
-      let surrounding = self.surrounding_tiles(grid);
-      surrounding.into_iter().find(|s| self.connected(s)).unwrap()
-    } else {
-      panic!("Can't find starting point from self: {:?}", self.tile);
+    match self.tile {
+      Tile::Start => self.surrounding_tiles(grid).into_iter().find(|s| self.connected(s)).unwrap(),
+      _ => panic!("Can't find starting point from self: {:?}", self.tile),
     }
   }
 }
@@ -353,7 +378,7 @@ fn enhance_pipeline(pipeline: &Pipeline) -> PipelineEnhanced {
 ///   The loop is right-sided.
 ///   We are facing north so we will walk East until we hit a loop pipe.
 ///   If we are bending west afterwards, through a 7, we look East and North from that 7.
-fn find_enclosed_fuggers(pipeline_enhanced: &PipelineEnhanced, pipeline_direction: Turn) -> HashSet<(i32, i32)> {
+fn ridiculous_flood_fill(pipeline_enhanced: &PipelineEnhanced, pipeline_direction: Turn) -> HashSet<(i32, i32)> {
   let max_pipeline_coordinate = pipeline_enhanced.iter().fold(0, |acc, (tile, _, _)| {
     acc.max(tile.coordinate.x.abs().max(tile.coordinate.y.abs()))
   });
@@ -394,6 +419,14 @@ fn find_enclosed_fuggers(pipeline_enhanced: &PipelineEnhanced, pipeline_directio
   enclosed_fuggers
 }
 
+fn solution_one(grid: &Grid) {
+  let start = grid.find_tile_by_char('S');
+  let starting_pipe = start.find_starting_tile(grid);
+  let pipe_count = walk_count(grid, 2, &start, &start, &starting_pipe);
+  println!("solution 1: {:?}", pipe_count / 2);
+}
+
+/// Solution two revolves around walking through the pipeline and filling/scanning towards the inside of the loop
 fn solution_two(grid: &Grid) {
   let start = grid.find_tile_by_char('S');
   let starting_pipe = start.find_starting_tile(grid);
@@ -403,16 +436,95 @@ fn solution_two(grid: &Grid) {
   let pipeline_enhanced = enhance_pipeline(&pipeline);
   let pipeline_direction = pipeline_direction(&pipeline_enhanced);
   // println!("Loop direction: {:?}", loop_direction);
-  let enclosed_fuggers = find_enclosed_fuggers(&pipeline_enhanced, pipeline_direction);
+  let enclosed_fuggers = ridiculous_flood_fill(&pipeline_enhanced, pipeline_direction);
   println!("solution 2: {}", enclosed_fuggers.len());
+}
+
+/// Solution three uses the Shoelace method and Pick's theorem to get the amount of points on the
+/// inside.
+/// Shoelace's formula counts are as follows:
+/// given (1,2), (2,3), (3, 4)
+/// (3-4) + (8 - 6) + (4 - 6) = -1 + 2 - 2 = -1
+/// -1.abs()/2 = 0.5
+fn solution_three(grid: &Grid) {
+  let start = grid.find_tile_by_char('S');
+  let starting_pipe = start.find_starting_tile(grid);
+  // Get the whole pipeline in a Vec
+  let mut pipeline: Vec<CoordinateTile> = vec![start.clone()];
+  walk_vec(grid, &mut pipeline, &start, &start, &starting_pipe);
+  // Get boundary points for Pick's theorem
+  let boundary_points = pipeline.len() as f32;
+  // Clone beginning to end for Shoelace method so
+  // it gets taken into account while creating windows(2)
+  pipeline.push(pipeline[0].clone());
+  // Shoelace method
+  let area_shoelace = (pipeline.windows(2).fold(0, |acc, x| {
+    acc + ((x[0].coordinate.x * x[1].coordinate.y) - (x[0].coordinate.y * x[1].coordinate.x))
+  }) as f32
+    / 2.0)
+    .abs();
+  // Pick's theorem
+  // A = inside + (outside/2) - 1
+  // 0 = inside + (outside/2) - 1 - A
+  // -inside = (outside/2) - 1 - A
+  // inside = -(outside/2) + 1 + A
+  let inside_points = 1_f32 + area_shoelace - (boundary_points / 2_f32);
+  println!("solution 3: {}", inside_points);
+}
+
+/// Solution four uses line scanning to find the inner points
+fn solution_four(grid: &Grid) {
+  let start = grid.find_tile_by_char('S');
+  let starting_pipe = start.find_starting_tile(grid);
+  // Get the whole pipeline in a Vec
+  let mut pipeline: Vec<CoordinateTile> = vec![start.clone()];
+  walk_vec(grid, &mut pipeline, &start, &start, &starting_pipe);
+  // Sort the pipeline so we can scan it from left to right
+  pipeline.sort_by(|a, b| a.coordinate.x.cmp(&b.coordinate.x));
+  // Morph the pipeline into something we can iterate from left to right
+  let mut pipebyline: HashMap<i32, Vec<CoordinateTile>> = HashMap::new();
+  pipeline
+    .into_iter()
+    .for_each(|ct| pipebyline.entry(ct.coordinate.y).or_default().push(ct));
+  let mut inside_points = 0;
+  // Go through the pipeline by line
+  for y in pipebyline.keys() {
+    let mut corner_start: Option<&Tile> = None;
+    let mut prev_x = 0;
+    let mut inside = false;
+    for ct in pipebyline[y].iter() {
+      if inside {
+        inside_points += ct.coordinate.x - prev_x - 1;
+      }
+      match ct.tile {
+        // Start can be anything, but in my input it is a NorthSouth
+        // so I put it in this match statement
+        Tile::NorthSouth | Tile::Start => {
+          inside = !inside;
+        }
+        Tile::NorthEast | Tile::SouthEast => {
+          corner_start = Some(&ct.tile);
+        }
+        Tile::NorthWest | Tile::SouthWest => {
+          if corner_start.is_some_and(|x| ct.tile.is_ubend(x)) {
+            corner_start = None;
+          } else {
+            inside = !inside;
+          }
+        }
+        _ => (),
+      }
+      prev_x = ct.coordinate.x;
+    }
+  }
+  println!("Solution 4: {}", inside_points);
 }
 
 fn main() {
   let input = read_to_string("input.txt.real").unwrap();
   let grid = Grid::new(&input);
-  let start = grid.find_tile_by_char('S');
-  let starting_pipe = start.find_starting_tile(&grid);
-  let pipe_count = walk_count(&grid, 2, &start, &start, &starting_pipe);
-  println!("solution 1: {:?}", pipe_count / 2);
+  solution_one(&grid);
   solution_two(&grid);
+  solution_three(&grid);
+  solution_four(&grid);
 }
