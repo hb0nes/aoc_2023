@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 aoclib = { path = "../lib" }
 nom = "7.1.3"
+termion = "3.0.0"
