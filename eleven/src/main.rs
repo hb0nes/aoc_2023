@@ -140,18 +140,13 @@ impl GalaxyGrid {
   }
 
   fn get_galaxy_points(&self) -> Vec<Point> {
-    let mut gp = self
+    self
       .grid
       .contents
       .iter()
       .filter(|(_, &v)| v == '#')
       .map(|(&point, _)| point)
-      .collect::<Vec<_>>();
-    gp.sort_by(|a, b| match a.0.cmp(&b.0) {
-      std::cmp::Ordering::Equal => a.1.cmp(&b.1),
-      o => o,
-    });
-    gp
+      .collect::<Vec<_>>()
   }
 }
 
@@ -160,6 +155,5 @@ fn main() {
   let grid = GalaxyGrid::new(input.as_str(), 2);
   println!("Solution 1: {}", grid.total_galaxy_distance());
   let grid = GalaxyGrid::new(input.as_str(), 1000000);
-  println!("{:?}", grid);
   println!("Solution 2: {}", grid.total_galaxy_distance());
 }
