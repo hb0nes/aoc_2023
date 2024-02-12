@@ -156,9 +156,10 @@ impl GalaxyGrid {
 }
 
 fn main() {
-  let input = read_to_string("input.txt.real").unwrap();
+  let input = read_to_string("input.txt").unwrap();
   let grid = GalaxyGrid::new(input.as_str(), 2);
   println!("Solution 1: {}", grid.total_galaxy_distance());
   let grid = GalaxyGrid::new(input.as_str(), 1000000);
+  println!("{:?}", grid);
   println!("Solution 2: {}", grid.total_galaxy_distance());
 }
