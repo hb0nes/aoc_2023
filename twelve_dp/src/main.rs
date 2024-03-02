@@ -52,6 +52,12 @@ fn solve_record(springs: &str, groups: &[usize], memo: &mut HashMap<(String, Vec
         total += solve_record(&springs[max_idx..], &groups[1..], memo);
     }
 
+    // We have checked only one possibility so far. Branch out to the next position to see if it's valid.
+    // We cannot do this if our current position is a #, because it could result in something like this:
+    // [##]?? -> #[#?]?
+    // This would be valid from the perspective of this recursive function, as it doesn't look behind
+    // so it would see #?.
+    // However, groups need to be separated by ? or ., so it's actually not valid.
     if &springs[0..1] != "#" {
         total += solve_record(&springs[1..], &groups, memo);
     }
