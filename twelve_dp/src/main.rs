@@ -120,7 +120,7 @@ fn solve_record_bottom(springs: &str, groups: &[usize]) -> usize {
             // If it does, we can do the same thing and add the amount of ways we could get to the starting index for the group after that,
             // and so forth.
             // --------------------------------------------------
-            //           01234567
+            //             01234567
             // Scenario 1: ??.??.?? 1,1,1
             // --------------------------------------------------
             //
@@ -132,7 +132,7 @@ fn solve_record_bottom(springs: &str, groups: &[usize]) -> usize {
             // --------------------------------------------------
             //
             //       dp[0]      dp[1]      dp[2]      dp[3]      dp[4]      dp[5]      dp[6]      dp[7]      dp[8]     ]
-            //     [ [0, 0, 0], [0, 0, 0], [1, 0, 0], [2, 0, 0], [0, 0, 0], [0, 2, 2], [0, 2, 4], [0, 2, 4], [0, 2, 4] ]
+            //     [ [0, 0, 0], [0, 0, 0], [1, 0, 0], [2, 0, 0], [0, 0, 0], [0, 2, 0], [0, 2, 0], [0, 2, 2], [0, 2, 4] ]
             let next_start_idx = (springs.len()).min(i + groups[j] + 1);
             let next_broken_idx = match springs[next_start_idx..].find('#') {
                 Some(n) => next_start_idx + n,
