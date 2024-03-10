@@ -116,10 +116,9 @@ fn solve_record_bottom(springs: &str, groups: &[usize]) -> usize {
             // If our current group is valid, we add the amount of ways we can reach the next
             // starting location, to all indices up to and including a broken spring.
             // If there are no broken springs, that means all remaining positions are valid for the
-            // next group.
-            // During next iterations, we can check if the group fits there.
-            // If it does, we can do the same thing and add the amount of ways we could get here,
-            // to the next starting index, and so forth.
+            // next group. During next iterations, we can check if the next group fits there.
+            // If it does, we can do the same thing and add the amount of ways we could get to the starting index for the group after that,
+            // and so forth.
             // --------------------------------------------------
             //           01234567
             // Scenario 1: ??.??.?? 1,1,1
