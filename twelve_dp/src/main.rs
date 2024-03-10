@@ -100,8 +100,7 @@ fn solve_record_bottom(springs: &str, groups: &[usize]) -> usize {
                 continue;
             }
             // if we are at last group and there are springs remaining, group isn't valid
-            let at_last_group = j == groups.len() - 1;
-            if at_last_group && springs[i + groups[j]..].chars().any(|c| c == '#') {
+            if (j == groups.len() - 1) && springs[i + groups[j]..].chars().any(|c| c == '#') {
                 continue;
             }
             // Check if current group is valid
