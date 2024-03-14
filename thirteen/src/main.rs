@@ -1,9 +1,8 @@
 use std::time::Instant;
 
 use itertools::Itertools;
-use log::{debug, error, info, log_enabled, Level};
 
-fn find_reflections(row_blocks: &Vec<Vec<String>>, col_blocks: &Vec<Vec<String>>, smudges: isize) -> Vec<usize> {
+fn find_reflections(row_blocks: &[Vec<String>], col_blocks: &[Vec<String>], smudges: isize) -> Vec<usize> {
     let mut total = vec![];
     for i in 0..row_blocks.len() {
         let a = find_reflection(&row_blocks[i], true, smudges);
@@ -17,7 +16,7 @@ fn find_reflections(row_blocks: &Vec<Vec<String>>, col_blocks: &Vec<Vec<String>>
 // Keep track of how many smudges we have accounted for.
 // When those two lines are found, expand outwards in both directions,
 // checking if either direction has a valid reflection.
-fn find_reflection(block: &Vec<String>, rows: bool, smudges: isize) -> usize {
+fn find_reflection(block: &[String], rows: bool, smudges: isize) -> usize {
     let mut total = 0;
     'j: for j in 0..block.len() - 1 {
         let mut smudges_left = smudges;
@@ -38,14 +37,14 @@ fn find_reflection(block: &Vec<String>, rows: bool, smudges: isize) -> usize {
             total += if rows { (j + 1) * 100 } else { j + 1 };
         }
     }
-    return total;
+    total
 }
 
 fn main() {
     env_logger::init();
     let row_blocks: Vec<Vec<String>> = (include_str!("../input.txt.real"))
         .split("\n\n")
-        .map(|block| block.split("\n").filter(|r| r != &"").map(|r| r.to_string()).collect_vec())
+        .map(|block| block.split('\n').filter(|r| r != &"").map(|r| r.to_string()).collect_vec())
         .collect_vec();
     let mut col_blocks: Vec<Vec<String>> = vec![];
     for i in 0..row_blocks.len() {
