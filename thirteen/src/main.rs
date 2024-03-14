@@ -3,7 +3,7 @@ use std::time::Instant;
 use itertools::Itertools;
 use log::{debug, error, info, log_enabled, Level};
 
-fn find_reflections(row_blocks: &Vec<Vec<String>>, col_blocks: &Vec<Vec<String>>, smudges: usize) -> Vec<usize> {
+fn find_reflections(row_blocks: &Vec<Vec<String>>, col_blocks: &Vec<Vec<String>>, smudges: isize) -> Vec<usize> {
     let mut total = vec![];
     for i in 0..row_blocks.len() {
         let a = find_reflection(&row_blocks[i], true, smudges);
@@ -13,24 +13,26 @@ fn find_reflections(row_blocks: &Vec<Vec<String>>, col_blocks: &Vec<Vec<String>>
     total
 }
 
-fn find_reflection(block: &Vec<String>, rows: bool, smudges: usize) -> usize {
+// Find two subsequent lines that are similar enough according to 'smudges'
+// Keep track of how many smudges we have accounted for.
+// When those two lines are found, expand outwards in both directions,
+// checking if either direction has a valid reflection.
+fn find_reflection(block: &Vec<String>, rows: bool, smudges: isize) -> usize {
     let mut total = 0;
     'j: for j in 0..block.len() - 1 {
         let mut smudges_left = smudges;
-        let row = &block[j];
-        let next_row = &block[j + 1];
-        smudges_left = match smudges_left.checked_sub(row.chars().zip(next_row.chars()).filter(|(cur, next)| cur != next).count()) {
-            Some(x) => x,
-            None => continue,
-        };
-        for outward_diff in 1..=j {
-            if j + 1 + outward_diff >= block.len() {
+        smudges_left -= block[j].chars().zip(block[j + 1].chars()).filter(|(cur, next)| cur != next).count() as isize;
+        if smudges_left < 0 {
+            continue;
+        }
+        for d in 1..=j {
+            if j + 1 + d >= block.len() {
                 break;
             }
-            smudges_left = match smudges_left.checked_sub(block[j - outward_diff].chars().zip(block[j + 1 + outward_diff].chars()).filter(|(cur, next)| cur != next).count()) {
-                Some(x) => x,
-                None => continue 'j,
-            };
+            smudges_left -= block[j - d].chars().zip(block[j + 1 + d].chars()).filter(|(cur, next)| cur != next).count() as isize;
+            if smudges_left < 0 {
+                continue 'j;
+            }
         }
         if smudges_left == 0 {
             total += if rows { (j + 1) * 100 } else { j + 1 };
