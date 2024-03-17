@@ -1,6 +1,6 @@
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
-use aoclib::{Direction, Grid};
+use aoclib::{Direction, Grid, Point};
 use itertools::Itertools;
 
 enum Rock {
@@ -22,23 +22,23 @@ impl Rock {
 
 /// Receives a point anywhere in the grid and a direction
 /// Returns the point on the edge of the grid in a given direction, starting at point
-fn point_edge(grid: &Grid, point: aoclib::Point, direction: &aoclib::Direction) -> aoclib::Point {
+fn point_edge(grid: &Grid, point: Point, direction: &Direction) -> Point {
     match direction {
-        aoclib::Direction::Left => (0, point.1),
-        aoclib::Direction::Right => (grid.width - 1, point.1),
-        aoclib::Direction::Up => (point.0, 0),
-        aoclib::Direction::Down => (point.0, grid.height - 1),
+        Direction::Left => (0, point.1),
+        Direction::Right => (grid.width - 1, point.1),
+        Direction::Up => (point.0, 0),
+        Direction::Down => (point.0, grid.height - 1),
     }
 }
 
 /// Receives a point that should contain a solid piece of rock and a direction
 /// Returns the point before that
-fn point_before(point: aoclib::Point, direction: &aoclib::Direction) -> aoclib::Point {
+fn point_before(point: Point, direction: &Direction) -> Point {
     match direction {
-        aoclib::Direction::Left => (point.0 + 1, point.1),
-        aoclib::Direction::Right => (point.0 - 1, point.1),
-        aoclib::Direction::Up => (point.0, point.1 + 1),
-        aoclib::Direction::Down => (point.0, point.1 - 1),
+        Direction::Left => (point.0 + 1, point.1),
+        Direction::Right => (point.0 - 1, point.1),
+        Direction::Up => (point.0, point.1 + 1),
+        Direction::Down => (point.0, point.1 - 1),
     }
 }
 
@@ -65,17 +65,13 @@ fn tilt_grid(grid: &Grid, direction: &Direction) -> Grid {
         if new_point == point {
             continue;
         }
-        // println!("Moved rock from {:?} to {:?}", point, new_point);
-        // println!("Old Grid: \n{}", grid);
         new_grid.contents.insert(point, '.');
         new_grid.contents.insert(new_point, 'O');
-        // println!("New Grid: \n{}", grid);
     }
     new_grid
 }
 
-// Find first index of something above current element
-// If it's a rock, move it to Direction
+/// Straightforward enough, tilt once upward and calculate score.
 fn solve_one(grid: &Grid) -> isize {
     let grid = tilt_grid(grid, &Direction::Up);
     grid.contents
@@ -83,8 +79,8 @@ fn solve_one(grid: &Grid) -> isize {
         .fold(0, |acc, (k, c)| if !matches!(Rock::from_char(c), Rock::Round) { acc } else { acc + grid.height - k.1 })
 }
 
-// Find first index of something above current element
-// If it's a rock, move it to Direction
+/// When tilting the stones, the pattern starts repeating itself at some point.
+/// Find that point and calculate what the answer would be if we actually continued.
 fn solve_two(grid: &Grid, cycles: usize) -> isize {
     let cycle_directions = vec![Direction::Up, Direction::Left, Direction::Down, Direction::Right];
     let mut grid = (*grid).clone();
@@ -103,9 +99,8 @@ fn solve_two(grid: &Grid, cycles: usize) -> isize {
             // Calculate the amount of items that repeat
             repeat_length = i - res;
             break;
-        } else {
-            finished_cycles.push(grid.clone());
         }
+        finished_cycles.push(grid.clone());
     }
     // Calculate the position in the array of cached results that maps to
     // the amount of cycles by doing some weird modulo-esque operation.
